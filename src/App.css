@@ -1,0 +1,18 @@
+/* App container styles */
+.app {
+  display: flex;
+}
+
+/* Main content styles */
+.main-content {
+  margin-left: 250px; /* Push the main content to the right, to avoid overlap with the sidebar */
+  padding: 20px;
+  flex-grow: 1; /* Ensure main content takes up remaining space */
+}
+
+/* Responsive adjustments (optional) */
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 0; /* For smaller screens, remove left margin */
+  }
+}

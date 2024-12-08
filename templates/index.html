@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Processor</title>
+</head>
+<body>
+    <h1>Upload Video or Use Webcam for Processing</h1>
+    
+    <h2>Upload Video</h2>
+    <form action="/upload" method="post" enctype="multipart/form-data" id="uploadForm">
+        <input type="file" name="file" required>
+        <label><input type="checkbox" name="models" value="mask"> Mask Detection</label>
+        <label><input type="checkbox" name="models" value="crowd"> Crowd Count</label>
+        <label><input type="checkbox" name="models" value="queue"> Queue Detection</label>
+        <label><input type="checkbox" name="models" value="smoke"> Smoke Detection</label>
+        <button type="submit">Upload</button>
+    </form>
+    <p id="uploadStatus"></p>
+    <p id="uploadDetections"></p>
+    <a id="uploadDownloadLink" style="display: none;">Download Processed Video</a>
+
+    <h2>Use Webcam</h2>
+    <p>Select Model(s):</p>
+    <form action="/webcam" method="get">
+        <label><input type="checkbox" name="models" value="mask"> Mask Detection</label>
+        <label><input type="checkbox" name="models" value="crowd"> Crowd Count</label>
+        <label><input type="checkbox" name="models" value="queue"> Queue Detection</label>
+        <label><input type="checkbox" name="models" value="smoke"> Smoke Detection</label>
+        <button type="submit">Start Webcam</button>
+    </form>
+    <p id="webcamStatus"></p>
+    <p id="webcamDetections"></p>
+
+    <script>
+        // Corrected function to get selected models
+        function getSelectedModels(modelTypePrefix) {
+            const selectedModels = [];
+            const checkboxes = document.querySelectorAll(input[name="models"]:checked);
+            checkboxes.forEach(checkbox => {
+                selectedModels.push(checkbox.value);
+            });
+            return selectedModels;
+        }
+
+        // Handle upload form submission
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const selectedModels = getSelectedModels('default');
+            formData.append('modelType', JSON.stringify(selectedModels));
+
+            const status = document.getElementById('uploadStatus');
+            const detections = document.getElementById('uploadDetections');
+            const downloadLink = document.getElementById('uploadDownloadLink');
+
+            status.textContent = 'Uploading and processing...';
+            detections.textContent = '';
+            downloadLink.style.display = 'none';
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData,
+                });
+                const result = await response.json();
+
+                if (response.ok) {
+                    status.textContent = result.message;
+                    detections.textContent = Total people detected: ${result.total_detections};
+                    downloadLink.href = result.download_link;
+                    downloadLink.style.display = 'inline';
+                    downloadLink.textContent = 'Download Processed Video';
+                } else {
+                    status.textContent = Error: ${result.error};
+                }
+            } catch (error) {
+                status.textContent = Error: ${error.message};
+            }
+        });
+
+        // Handle webcam form submission
+        //document.querySelector('form[action="/webcam"]').addEventListener('submit', async (e) => {
+        //    e.preventDefault();
+
+        //    const selectedModels = getSelectedModels('webcam');
+
+        //    const status = document.getElementById('webcamStatus');
+        //    const detections = document.getElementById('webcamDetections');
+
+        //    status.textContent = 'Processing live webcam feed...';
+        //    detections.textContent = '';
+
+        //    try {
+        //        const response = await fetch('/webcam', {
+        //            method: 'POST',
+        //            headers: {
+        //                'Content-Type': 'application/json',
+        //            },
+        //            body: JSON.stringify({ modelType: selectedModels }),
+        //        });
+        //        const result = await response.json();
+
+        //        if (response.ok) {
+        //            status.textContent = result.message;
+        //            detections.textContent = Total people detected: ${result.total_detections};
+        //        } else {
+        //            status.textContent = Error: ${result.error};
+        //        }
+        //    } catch (error) {
+        //        status.textContent = Error: ${error.message};
+        //    }
+        //});
+
+        document.querySelector('form[action="/webcam"]').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const selectedModels = [];
+    document.querySelectorAll('input[name="models"]:checked').forEach((checkbox) => {
+        selectedModels.push(checkbox.value);
+    });
+
+    const status = document.getElementById('webcamStatus');
+    status.textContent = 'Processing live webcam feed...';
+
+    // Create query string with selected models
+    const queryParams = selectedModels.map(model => models=${model}).join('&');
+
+    try {
+        const response = await fetch(/webcam?${queryParams}, { method: 'GET' });
+        if (response.ok) {
+            const result = await response.json();
+            status.textContent = result.message || 'Webcam feed processed.';
+        } else {
+            const error = await response.json();
+            status.textContent = Error: ${error.error || 'Unknown error'};
+        }
+    } catch (error) {
+        status.textContent = Error: ${error.message};
+    }
+});
+
+    </script>
+</body>
+</html>

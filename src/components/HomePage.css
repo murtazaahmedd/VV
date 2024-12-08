@@ -1,0 +1,44 @@
+/* HomePage Styles */
+.home-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    height: 100vh;
+    background-color: #f7fafc;
+    color: #111827;
+    text-align: center;
+    padding: 20px;
+  }
+  
+  .home-page h1 {
+    font-size: 48px;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+  
+  .home-page p {
+    font-size: 18px;
+    font-weight: 400;
+    color: #4b5563;
+    margin-bottom: 30px;
+  }
+  
+  .home-page .footer {
+    font-size: 14px;
+    color: #6b7280;
+  }
+  
+  .home-page .footer a {
+    text-decoration: none;
+    color: #3b82f6;
+    font-weight: 600;
+  }
+  
+  .home-page .footer a:hover {
+    text-decoration: underline;
+  }
+  
