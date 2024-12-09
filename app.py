@@ -263,10 +263,10 @@ def CC_process_video_alternative(video_path, model, output_path, threshold=0.25,
 
 frame_count = 0  # Global counter for frame skipping
 
-def CC_process_webcam_feed(frame, model, threshold=0.25, detection_threshold=0, frame_skip=10):
+def CC_process_webcam_feed(frame, model, threshold=0.25,frame_skip=10,detection_threshold=10):
     """Process a single frame for people detection."""
     print("Processing frame for crowd detection...")
-    
+    print("Detection Threshold Received: ",detection_threshold)
     # Initialize counters
     total_people_detected_in_frame = 0
     
@@ -610,6 +610,8 @@ def upload_file():
         return jsonify({'error': 'No selected file'}), 400
 
     selected_models = request.form.getlist('models')  # Get selected models
+    detection_threshold = int(request.form.get('threshold', 5))
+
     if not selected_models:
         return jsonify({'error': 'No model selected'}), 400
 
@@ -625,7 +627,7 @@ def upload_file():
                 output_path_crowd = os.path.join(app.config['OUTPUT_FOLDER'], 'crowd_' + file.filename)
                 tasks.append(
                     executor.submit(
-                        CC_process_video_alternative, input_path, CROWD_MODEL, output_path_crowd, 0.25, 10
+                        CC_process_video_alternative, input_path, CROWD_MODEL, output_path_crowd, 0.25, 10,detection_threshold
                     )
                 )
 
@@ -678,7 +680,8 @@ def webcam_feed():
     data = request.json
     action = data.get('action')  # 'start' or 'stop'
     selected_models = data.get('models', [])
-
+    dct_thsh = int(data.get('threshold', 5))
+    print("Detection Threshold Given: ",dct_thsh)
     if action == 'stop':
         is_live_feed_running = False
         return jsonify({'message': 'Live feed stopped.'})
@@ -702,7 +705,7 @@ def webcam_feed():
 
                 with ThreadPoolExecutor() as executor:
                     if 'crowd' in selected_models:
-                        tasks.append(executor.submit(CC_process_webcam_feed, frame, CROWD_MODEL))
+                        tasks.append(executor.submit(CC_process_webcam_feed, frame, CROWD_MODEL,dct_thsh))
                     if 'mask' in selected_models:
                         tasks.append(executor.submit(MASK_detect_objects_from_webcam, frame, MASK_MODEL))
                     if 'queue' in selected_models:
