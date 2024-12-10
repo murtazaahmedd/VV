@@ -23,7 +23,7 @@
 
     <h2>Use Webcam</h2>
     <p>Select Model(s):</p>
-    <form action="/webcam" method="get">
+    <form action="/webcam" method="get" id="webcamForm">
         <label><input type="checkbox" name="models" value="mask"> Mask Detection</label>
         <label><input type="checkbox" name="models" value="crowd"> Crowd Count</label>
         <label><input type="checkbox" name="models" value="queue"> Queue Detection</label>
@@ -35,10 +35,9 @@
 
     <script>
         // Corrected function to get selected models
-        function getSelectedModels(modelTypePrefix) {
+        function getSelectedModels() {
             const selectedModels = [];
-            const checkboxes = document.querySelectorAll(input[name="models"]:checked);
-            checkboxes.forEach(checkbox => {
+            document.querySelectorAll('input[name="models"]:checked').forEach(checkbox => {
                 selectedModels.push(checkbox.value);
             });
             return selectedModels;
@@ -48,7 +47,7 @@
         document.getElementById('uploadForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(e.target);
-            const selectedModels = getSelectedModels('default');
+            const selectedModels = getSelectedModels();
             formData.append('modelType', JSON.stringify(selectedModels));
 
             const status = document.getElementById('uploadStatus');
@@ -68,79 +67,43 @@
 
                 if (response.ok) {
                     status.textContent = result.message;
-                    detections.textContent = Total people detected: ${result.total_detections};
+                    detections.textContent = `Total people detected: ${result.total_detections}`;
                     downloadLink.href = result.download_link;
                     downloadLink.style.display = 'inline';
                     downloadLink.textContent = 'Download Processed Video';
                 } else {
-                    status.textContent = Error: ${result.error};
+                    status.textContent = `Error: ${result.error}`;
                 }
             } catch (error) {
-                status.textContent = Error: ${error.message};
+                status.textContent = `Error: ${error.message}`;
             }
         });
 
         // Handle webcam form submission
-        //document.querySelector('form[action="/webcam"]').addEventListener('submit', async (e) => {
-        //    e.preventDefault();
+        document.getElementById('webcamForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
 
-        //    const selectedModels = getSelectedModels('webcam');
+            const selectedModels = getSelectedModels();
+            const status = document.getElementById('webcamStatus');
 
-        //    const status = document.getElementById('webcamStatus');
-        //    const detections = document.getElementById('webcamDetections');
+            status.textContent = 'Processing live webcam feed...';
 
-        //    status.textContent = 'Processing live webcam feed...';
-        //    detections.textContent = '';
+            // Create query string with selected models
+            const queryParams = selectedModels.map(model => `models=${model}`).join('&');
 
-        //    try {
-        //        const response = await fetch('/webcam', {
-        //            method: 'POST',
-        //            headers: {
-        //                'Content-Type': 'application/json',
-        //            },
-        //            body: JSON.stringify({ modelType: selectedModels }),
-        //        });
-        //        const result = await response.json();
-
-        //        if (response.ok) {
-        //            status.textContent = result.message;
-        //            detections.textContent = Total people detected: ${result.total_detections};
-        //        } else {
-        //            status.textContent = Error: ${result.error};
-        //        }
-        //    } catch (error) {
-        //        status.textContent = Error: ${error.message};
-        //    }
-        //});
-
-        document.querySelector('form[action="/webcam"]').addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const selectedModels = [];
-    document.querySelectorAll('input[name="models"]:checked').forEach((checkbox) => {
-        selectedModels.push(checkbox.value);
-    });
-
-    const status = document.getElementById('webcamStatus');
-    status.textContent = 'Processing live webcam feed...';
-
-    // Create query string with selected models
-    const queryParams = selectedModels.map(model => models=${model}).join('&');
-
-    try {
-        const response = await fetch(/webcam?${queryParams}, { method: 'GET' });
-        if (response.ok) {
-            const result = await response.json();
-            status.textContent = result.message || 'Webcam feed processed.';
-        } else {
-            const error = await response.json();
-            status.textContent = Error: ${error.error || 'Unknown error'};
-        }
-    } catch (error) {
-        status.textContent = Error: ${error.message};
-    }
-});
-
+            try {
+                const response = await fetch(`/webcam?${queryParams}`, { method: 'GET' });
+                if (response.ok) {
+                    const result = await response.json();
+                    status.textContent = result.message || 'Webcam feed processed.';
+                } else {
+                    const error = await response.json();
+                    status.textContent = `Error: ${error.error || 'Unknown error'}`;
+                }
+            } catch (error) {
+                status.textContent = `Error: ${error.message}`;
+            }
+        });
     </script>
 </body>
 </html>

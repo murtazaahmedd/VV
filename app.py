@@ -9,6 +9,8 @@ import numpy as np
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from flask_cors import CORS
 import base64
+from datetime import datetime, timedelta
+
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -187,7 +189,7 @@ def log_smoke_detection_to_db(camera_id, no_of_detections,image_data):
 initialize_database()
 
 #CC MODELS FUNCTIONS
-def CC_process_video_alternative(video_path, model, output_path, threshold=0.25, frame_skip=10, detection_threshold=5):
+def CC_process_video_alternative(video_path, model, output_path, conf_threshold=0.25, frame_skip=10, detection_threshold=5):
     """Efficient frame-by-frame video processing, skipping frames periodically, with people detection."""
     print("CC UPLOAD CALLED")
     cap = cv2.VideoCapture(video_path)
@@ -236,7 +238,7 @@ def CC_process_video_alternative(video_path, model, output_path, threshold=0.25,
 
         # Count the number of people detected in this frame
         for i in range(int(results['num_detections'][0])):
-            if classes[i] == 1 and scores[i] > threshold:
+            if classes[i] == 1 and scores[i] > conf_threshold:
                 ymin, xmin, ymax, xmax = boxes[i]
                 left, top, right, bottom = (int(xmin * frame_width), int(ymin * frame_height),
                                             int(xmax * frame_width), int(ymax * frame_height))
@@ -247,6 +249,7 @@ def CC_process_video_alternative(video_path, model, output_path, threshold=0.25,
 
         # If the detection threshold is exceeded, log to the database
         if frame_people_detected >= detection_threshold:
+            print("Inside if, total ppl in this frame :",frame_people_detected)
             log_crowd_detection_to_db(camera_id, frame_people_detected)
             location_name = "MainHall"  # Fetch location dynamically if needed
             log_alert(camera_id, location_name, "Crowd", frame_people_detected)
@@ -262,11 +265,13 @@ def CC_process_video_alternative(video_path, model, output_path, threshold=0.25,
     return total_people_detected
 
 frame_count = 0  # Global counter for frame skipping
+last_crowd_alert_time = None #GLOBAL counter to check last crowd alert
 
-def CC_process_webcam_feed(frame, model, threshold=0.25,frame_skip=10,detection_threshold=10):
+def CC_process_webcam_feed(frame, model, conf_threshold=0.25,frame_skip=10,detection_threshold=1):
     """Process a single frame for people detection."""
     print("Processing frame for crowd detection...")
     print("Detection Threshold Received: ",detection_threshold)
+    print("Confidence Threshold: ",conf_threshold)
     # Initialize counters
     total_people_detected_in_frame = 0
     
@@ -287,19 +292,23 @@ def CC_process_webcam_feed(frame, model, threshold=0.25,frame_skip=10,detection_
 
     # Extract detections
     boxes = results['detection_boxes'].numpy()[0]
+    # print("BOXES:",boxes)
     classes = results['detection_classes'].numpy()[0]
+    # print("ClASSes:",classes)
     scores = results['detection_scores'].numpy()[0]
+    # print("Scores: ",scores)
 
     # Count the number of people detected in this frame
+    print("total detects: ",int(results['num_detections'][0]))
     for i in range(int(results['num_detections'][0])):
-        if classes[i] == 1 and scores[i] > threshold:
+        if classes[i] == 1 and scores[i] > conf_threshold:
             total_people_detected_in_frame += 1
 
     print(f"Total people detected in current frame: {total_people_detected_in_frame}")
 
     # Draw bounding boxes for detections
     for i in range(int(results['num_detections'][0])):
-        if classes[i] == 1 and scores[i] > threshold:
+        if classes[i] == 1 and scores[i] > conf_threshold:
             ymin, xmin, ymax, xmax = boxes[i]
             left, top, right, bottom = (
                 int(xmin * frame.shape[1]),
@@ -705,7 +714,7 @@ def webcam_feed():
 
                 with ThreadPoolExecutor() as executor:
                     if 'crowd' in selected_models:
-                        tasks.append(executor.submit(CC_process_webcam_feed, frame, CROWD_MODEL,dct_thsh))
+                        tasks.append(executor.submit(CC_process_webcam_feed, frame, CROWD_MODEL,0.25,10,dct_thsh))
                     if 'mask' in selected_models:
                         tasks.append(executor.submit(MASK_detect_objects_from_webcam, frame, MASK_MODEL))
                     if 'queue' in selected_models:
@@ -749,6 +758,8 @@ def webcam_feed():
         return jsonify({'message': 'Live feed processing completed', 'results': responses})
 @app.route('/alerts', methods=['GET'])
 def fetch_alerts():
+    global last_crowd_alert_time
+
     try:
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
@@ -762,7 +773,7 @@ def fetch_alerts():
         alerts = cursor.fetchall()
 
         alerts_with_images = []
-
+        now = datetime.now()
         for alert in alerts:
             alert_dict = {
                 'camera_id': alert[0],
@@ -772,6 +783,13 @@ def fetch_alerts():
                 'timestamp': alert[4],
                 'image': None  # Default value for image
             }
+
+            # Implement 90-second cooldown for "Crowd" alerts
+            # if alert[2] == "Crowd":
+            #     alert_time = datetime.strptime(alert[4], '%Y-%m-%d %H:%M:%S')
+            #     if last_crowd_alert_time and now - last_crowd_alert_time < timedelta(seconds=45):
+            #         continue  # Skip this "Crowd" alert
+            #     last_crowd_alert_time = alert_time
 
             # Fetch image for "Mask" alerts from Mask_Detection table
             if alert[2] == "No-Mask":

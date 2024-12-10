@@ -259,7 +259,7 @@ def CC_process_video_alternative(video_path, model, output_path, threshold=0.25,
 
 frame_count = 0  # Global counter for frame skipping
 
-def CC_process_webcam_feed(frame, model, threshold=0.25, detection_threshold=0, frame_skip=10):
+def CC_process_webcam_feed(frame, model, threshold=0.25, detection_threshold=1, frame_skip=10):
     """Process a single frame for people detection."""
     print("Processing frame for crowd detection...")
     
